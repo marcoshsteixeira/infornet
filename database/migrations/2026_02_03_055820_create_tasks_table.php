@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id(); // int AUTO_INCREMENT PRIMARY KEY
             $table->string('title', 255)->nullable();
             $table->text('description')->nullable();
-            $table->enum('completed', ['true', 'false'])->nullable();
+            $table->int('completed')->nullable();
             $table->timestamps(); // created_at e updated_at
         });
     }

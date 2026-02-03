@@ -2,43 +2,47 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Http\Requests\StoreTaskRequest;
+use App\Http\Requests\UpdateTaskRequest;
+use App\Http\Resources\TaskResource;
 use App\Models\Task;
+use App\Services\TaskService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class TasksController extends Controller
 {
-    public function index() {
-        $tasks = Task::all();
-        return response()->json($tasks);
+    private TaskService $taskService;
+
+    public function __construct(TaskService $taskService)
+    {
+        $this->taskService = $taskService;
     }
 
-    public function store(Request $request) {
-        $validatedData = $request->validate([
-            'title' => 'required|max:255',
-            'description' => 'required',
-            'completed' => 'required',
-        ]);
+    public function index(): AnonymousResourceCollection
+    {
+        $tasks = $this->taskService->getAllTasks();
 
-        $task = Task::create($validatedData);
+        return TaskResource::collection($tasks);
+    }
+
+    public function store(StoreTaskRequest $request): JsonResponse
+    {
+        $task = $this->taskService->createTask($request->validated());
 
         return response()->json([
             'message' => 'Task created successfully',
-            'id' => $task->id
+            'data' => new TaskResource($task)
         ], 201);
     }
 
-    public function update(Request $request, $id) {
-        $validatedData = $request->validate([
-            'completed' => 'required',
-        ]);
-
-        $task = Task::findOrFail($id);
-
-        $task->update($validatedData);
+    public function update(UpdateTaskRequest $request, Task $task): JsonResponse
+    {
+        $updatedTask = $this->taskService->updateTask($task, $request->validated());
 
         return response()->json([
             'message' => 'Task updated successfully',
-            'id' => $task->id
+            'data' => new TaskResource($updatedTask)
         ], 200);
     }
 }

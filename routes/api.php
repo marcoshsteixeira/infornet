@@ -19,5 +19,8 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-Route::apiResource('tasks', TasksController::class);
-
+Route::controller(TasksController::class)->group(function () {
+    Route::get('tasks', 'index');
+    Route::post('tasks', 'store');
+    Route::put('tasks/{task}', 'update');
+});
