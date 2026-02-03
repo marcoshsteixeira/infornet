@@ -1,66 +1,235 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## Sobre o Projeto
 
-## About Laravel
+Resposta para a primeira questão do teste técnico.
+Segue abaixo algumas informações do que foi feito
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 🎯 Princípios SOLID Aplicados
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### S - Single Responsibility Principle (Responsabilidade Única)
 
-## Learning Laravel
+Cada classe tem UMA única responsabilidade:
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- **`StoreTaskRequest` / `UpdateTaskRequest`** → Apenas validam dados de entrada
+- **`TaskService`** → Apenas implementa lógica de negócio
+- **`TasksController`** → Apenas coordena requisições HTTP
+- **`TaskResource`** → Apenas formata respostas JSON
+- **`Task` (Model)** → Apenas representa dados
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+**Exemplo:**
+```php
+// Antes: Controller com múltiplas responsabilidades
+class TasksController {
+    public function store(Request $request) {
+        $validated = $request->validate([...]); // Validação
+        $task = Task::create($validated);       // Persistência
+        return response()->json([...]);         // Formatação
+    }
+}
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+// Depois: Responsabilidades separadas
+class TasksController {
+    public function store(StoreTaskRequest $request) {
+        $task = $this->taskService->createTask($request->validated());
+        return response()->json([...]);
+    }
+}
+```
 
-## Laravel Sponsors
+---
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+### O - Open/Closed Principle (Aberto/Fechado)
 
-### Premium Partners
+Aberto para extensão, fechado para modificação:
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
+```php
+// Pode estender TaskService sem modificar código existente
+class NotifyingTaskService extends TaskService {
+    public function createTask(array $taskData): Task {
+        $task = parent::createTask($taskData);
+        // Adiciona notificação
+        $this->notificationService->send($task);
+        return $task;
+    }
+}
 
-## Contributing
+// Usa naturalmente via injeção de dependência
+$controller = new TasksController(new NotifyingTaskService());
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+---
 
-## Code of Conduct
+### L - Liskov Substitution Principle (Substituição de Liskov)
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Qualquer implementação pode substituir a classe base:
 
-## Security Vulnerabilities
+```php
+interface TaskServiceInterface {
+    public function getAllTasks(): Collection;
+    public function createTask(array $data): Task;
+    public function updateTask(Task $task, array $data): Task;
+}
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+// Qualquer implementação pode ser usada
+class TaskService implements TaskServiceInterface { }
+class CachedTaskService implements TaskServiceInterface { }
 
-## License
+// Controller funciona com qualquer implementação
+public function __construct(TaskServiceInterface $taskService) {
+    $this->taskService = $taskService;
+}
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+---
+
+### I - Interface Segregation Principle (Segregação de Interface)
+
+Interfaces específicas por responsabilidade:
+
+```php
+// ❌ ERRADO: Interface muito grande
+interface TaskManagerInterface {
+    public function getAllTasks();
+    public function createTask();
+    public function exportToCsv();
+    public function sendEmail();
+}
+
+// ✅ CORRETO: Interfaces focadas
+interface TaskRepositoryInterface {
+    public function getAllTasks();
+    public function createTask();
+}
+
+interface TaskExporterInterface {
+    public function exportToCsv();
+}
+```
+
+---
+
+### D - Dependency Inversion Principle (Inversão de Dependência)
+
+Depende de abstrações (interfaces), não de implementações concretas:
+
+```php
+class TasksController extends Controller
+{
+    // Depende de abstração (TaskService), não de implementação concreta
+    private TaskService $taskService;
+
+    // Injeção de dependência via construtor
+    public function __construct(TaskService $taskService)
+    {
+        $this->taskService = $taskService;
+    }
+
+    public function store(StoreTaskRequest $request): JsonResponse
+    {
+        // Usa abstração, não sabe detalhes de implementação
+        $task = $this->taskService->createTask($request->validated());
+        
+        return response()->json([...]);
+    }
+}
+```
+---
+
+## 🧹 Clean Code Aplicado
+
+### ✅ Nomes Significativos
+
+```php
+public function getAllTasks() { }
+public function createTask() { }
+public function updateTask() { }
+```
+
+### ✅ Funções Pequenas e Focadas
+
+```php
+// Cada método faz apenas uma coisa
+public function createTask(array $taskData): Task
+{
+    return Task::create($taskData);  // Apenas 1 linha, 1 responsabilidade
+}
+```
+
+### ✅ Sem Duplicação (DRY)
+
+```php
+// Método reutilizável de envio de response
+// Mas respeitando SOLID, não coloquei isso no Controller
+```
+
+### ✅ Tratamento de Erros
+
+```php
+// Validação com mensagens customizadas em português
+public function messages(): array
+{
+    return [
+        'title.required' => 'O título é obrigatório',
+        'description.required' => 'A descrição é obrigatória',
+        'completed.boolean' => 'O status deve ser verdadeiro ou falso',
+    ];
+}
+```
+
+### ✅ Type Hints Completos
+
+```php
+// Todos os métodos têm tipos definidos
+public function updateTask(Task $task, array $taskData): Task
+{
+    $task->update($taskData);
+    return $task;
+}
+```
+
+---
+
+## 🛠️ Testes unitários (Pesk)
+
+![alt text](image.png)
+
+---
+## 📁 Estrutura do Projeto
+
+```
+api-rest/
+├── app/
+│   ├── Http/
+│   │   ├── Controllers/
+│   │   │   └── TasksController.php      # Coordena requisições HTTP
+│   │   ├── Requests/
+│   │   │   ├── StoreTaskRequest.php     # Valida criação de tasks
+│   │   │   └── UpdateTaskRequest.php    # Valida atualização de tasks
+│   │   └── Resources/
+│   │       └── TaskResource.php         # Formata respostas JSON
+│   │
+│   ├── Models/
+│   │   └── Task.php                     # Representa dados de tasks
+│   │
+│   └── Services/
+│       └── TaskService.php              # Lógica de negócio
+│
+├── database/
+│   ├── factories/
+│   │   └── TaskFactory.php              # Factory para testes
+│   └── migrations/
+│       └── *_create_tasks_table.php     # Estrutura do banco
+│
+├── routes/
+│   └── api.php                          # Rotas da API
+│
+└── tests/
+    ├── Feature/
+    │   ├── TaskServiceTest.php          # Testes do Service
+    │   └── TasksControllerTest.php      # Testes da API
+    └── Unit/
+        └── TaskModelTest.php            # Testes do Model
+
+```
