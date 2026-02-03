@@ -19,11 +19,11 @@ class TasksController extends Controller
         $this->taskService = $taskService;
     }
 
-    public function index(): AnonymousResourceCollection
+    public function index(): JsonResponse
     {
         $tasks = $this->taskService->getAllTasks();
 
-        return TaskResource::collection($tasks);
+        return response()->json(TaskResource::collection($tasks));
     }
 
     public function store(StoreTaskRequest $request): JsonResponse
